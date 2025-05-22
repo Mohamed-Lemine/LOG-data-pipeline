@@ -159,7 +159,7 @@ class DataManager:
         - base_dir : dossier racine du projet (le dossier parent contenant /output)
         """
 
-        out_dir = os.path.join(base_dir, "output", "calibrated")
+        out_dir = os.path.join(base_dir)
         os.makedirs(out_dir, exist_ok=True)
 
         # heure au format safe

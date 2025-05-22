@@ -23,7 +23,7 @@ path_data = os.path.join(project_root, 'data', 'raw', 'export_recife_2024.dat')
 path_calib_dir = os.path.join(project_root, 'data', 'calibration' ,  'ALL_2023')
 
 # Dossier de sortie
-output_dir = os.path.join(project_root)
+output_dir = os.path.join(project_root , 'output' , 'calibrated')
 
 # 1. Initialiser CalibrationManager avec le dossier calibration
 calibration_manager = CalibrationManager(path_calib_dir=path_calib_dir)
