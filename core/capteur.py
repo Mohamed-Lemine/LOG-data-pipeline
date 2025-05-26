@@ -42,6 +42,8 @@ class CapteurTRIOS:
             self.dark_pixels = (self.coeff_c['DarkPixelStart'], self.coeff_c['DarkPixelStop'])
         self.B0, self.B1 = DataManager.read_back_file(path_back, self.integtime)
         self.cal = DataManager.read_cal_file(path_cal)
+        self.fichier_Cal = path_cal
+
         self.cal_lambda = None
         self.cal_data = None
         print(f"[INFO] Calibration chargée pour {self.nom_capteur}")

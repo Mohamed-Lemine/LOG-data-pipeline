@@ -17,7 +17,7 @@ from core.calibration_manager import CalibrationManager
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
 # Fichier de données brutes (.dat)
-path_data = os.path.join(project_root, 'data', 'raw', 'export_recife_2024.dat')
+path_data = os.path.join(project_root, 'data', 'raw', 'export_Trios_Sepia20231010.dat')
 
 # Dossier calibration (Cal_*, Back_*, *.ini pour chaque capteur)
 path_calib_dir = os.path.join(project_root, 'data', 'calibration' ,  'ALL_2023')
@@ -32,7 +32,7 @@ calibration_manager = CalibrationManager(path_calib_dir=path_calib_dir)
 calibration_manager.run_full_calibration_pipeline(
     path_data=path_data,
     output_dir=output_dir,
-    interpolation_mode='UV_Vis'  # ou 'UV' selon besoin
+    interpolation_mode='UV'  # ou 'UV_Vis' selon besoin
 )
 
 print(f"[INFO] Pipeline terminé : spectres calibrés et exportés dans {output_dir}")

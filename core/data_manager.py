@@ -57,7 +57,11 @@ class DataManager:
                     if len(parts) < 2:
                         continue
                     lamda.append(int(parts[0]))
-                    data.append(int(parts[1]))
+                    if parts[1].upper() in ["NAN", "-NAN", "+NAN"]:
+                        data.append(0)  # ou np.nan
+                    else:
+                        data.append(int(parts[1]))
+
                 # Stocker le spectre
                 spectres.append({
                     'entete': entete.copy(),
@@ -206,10 +210,10 @@ class DataManager:
                     f"InclX : {inclx}\nInclY : {incly}\n"
                 )
 
-            fo.write("\nl_onde\tdata\n")
-            # Écriture du tableau des valeurs calibrées, une ligne par paire (lambda, data)
+            fo.write("\nl_onde\t\tdata\n")
             for lam, dat in zip(sensor.cal_lambda, sensor.cal_data):
-                fo.write(f"{lam}\t{dat}\n")
+                fo.write(f"{lam}\t\t\t{dat}\n")
+
 
 
 
