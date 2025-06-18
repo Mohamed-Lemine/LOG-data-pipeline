@@ -1,9 +1,22 @@
-# Ignore tout le contenu du dossier output/
+# Mac, Python, VSCode, Jupyter
+.DS_Store
+__pycache__/
+*.pyc
+*.pyo
+.vscode/
+.idea/
+.env
+.venv
+*.ipynb_checkpoints/
+*~
+.~lock.*
+
+# Output : on garde la structure, on ignore les fichiers
 output/*
-
-# MAIS pas les sous-dossiers
 !output/**/
-
-# MAIS pas les fichiers README.md et .gitkeep dans output/ et ses sous-dossiers
 !output/**/*.md
-!output/**/.gitkeep
+
+
+# Ne pas ignorer le squelette d’output (README.md)
+
+
