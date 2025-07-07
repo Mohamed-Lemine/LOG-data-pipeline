@@ -2,6 +2,9 @@
 
 import os
 import numpy as np
+import pandas as pd 
+import re 
+from openpyxl import load_workbook
 
 class DataManager:
     """
@@ -41,7 +44,11 @@ class DataManager:
                         entete['InclY'] = line.split('=')[1].strip()
                     elif line.startswith('Pressure'):
                         entete['Pressure'] = line.split('=')[1].strip()
+                    elif line.startswith('Mission  '):
+                        entete['mission'] = line.split('=')[1].strip()
+
                     line = f.readline()
+                    
                 # Si on a atteint la fin du fichier
                 if not line:
                     break
@@ -157,27 +164,27 @@ class DataManager:
     def save_calibrated_spectre_txt(spectre, sensor, base_dir):
         """
         Crée le fichier .txt d'un spectre calibré dans output/calibrated/.
-
+    
         - spectre : dict avec 'entete' (doit contenir 'device', 'date', 'heure', etc.)
         - sensor  : objet capteur_TRIOS contenant cal_lambda, cal_data, etc.
         - base_dir : dossier racine du projet (le dossier parent contenant /output)
         """
-
+    
         out_dir = os.path.join(base_dir)
         os.makedirs(out_dir, exist_ok=True)
-
+    
         # heure au format safe
         h, m, s = spectre['entete']['heure'].split(':')
         heure_safe = f"{int(h):02d}-{int(m):02d}-{int(s):02d}"
-
+    
         filename = f"{spectre['entete']['device'].upper()}_{spectre['entete']['date']}_{heure_safe}.txt"
         filepath = os.path.join(out_dir, filename)
         print(f" -> Création de {filepath}")
-
+    
         # Vérification
         if getattr(sensor, 'cal_lambda', None) is None or getattr(sensor, 'cal_data', None) is None:
             raise RuntimeError(f"Pas de données calibrées pour {spectre['entete']['device']}")
-
+    
         with open(filepath, 'w', encoding='utf-8') as fo:
             fo.write(
                 "Nom de l'instrument : %s\n"
@@ -191,31 +198,176 @@ class DataManager:
                     spectre['entete']['heure'],
                 )
             )
-
-            # Ajout des champs spécifiques si présents dans l'entête
-            nom = spectre['entete']['device']
-            comment = spectre['entete'].get('comment', '')
+    
+            # Toujours écrire ces lignes, même si vides
             inclx = spectre['entete'].get('InclX', '')
             incly = spectre['entete'].get('InclY', '')
             pressure = spectre['entete'].get('Pressure', '')
-
-            if nom == 'SAM_8172':
-                fo.write(
-                    f"InclX : {inclx}\nInclY : {incly}\nPressure : {pressure}\nComment : {comment}\n"
-                )
-            elif nom == 'SAM_80E0':
-                fo.write(f"Comment : {comment}\n")
-            elif nom.upper() == 'SAM_839E':
-                fo.write(
-                    f"InclX : {inclx}\nInclY : {incly}\n"
-                )
-
+            comment = spectre['entete'].get('comment', '')
+            mission = spectre['entete'].get('mission', '')
+    
+            fo.write(
+                f"InclX : {inclx}\n"
+                f"InclY : {incly}\n"
+                f"Pressure : {pressure}\n"
+                f"Comment : {comment}\n"
+                f"Mission : {mission}\n"
+            )
+    
             fo.write("\nl_onde\t\tdata\n")
             for lam, dat in zip(sensor.cal_lambda, sensor.cal_data):
                 fo.write(f"{lam}\t\t\t{dat}\n")
 
 
 
+      # methode pour bilan_radeau 
+      
+      
+      
+      
+      
+    @staticmethod
+    def read_calibrated_measure(path: str) -> list:
+        """
+        Lit un fichier calibré (.txt) et retourne la liste des valeurs mesurées (colonne 'data').
+        Ignore les entêtes textuelles.
+        """
+        values = []
+        with open(path, 'r', encoding='utf-8') as f:
+            data_section = False
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                if line.startswith("l_onde"):
+                    data_section = True
+                    continue
+                if data_section:
+                    parts = line.split()
+                    if len(parts) >= 2:
+                        try:
+                            value = float(parts[-1])
+                            values.append(value)
+                        except ValueError:
+                            continue
+        return values
 
+    
+    @staticmethod
+    def read_station_metadata(path: str) -> pd.DataFrame:
+        """
+        Lit le fichier Excel des métadonnées de stations à l'emplacement `path`
+        et retourne les colonnes : 'Station', 'date', 'heure_locale', 'lat', 'lon'.
+        Adapte le format des heures (ex : '9h45' -> '09:45') pour compatibilité avec enrichissement.
+        """
+        # Lecture brute
+        df = pd.read_excel(path)
+        df.columns = [col.strip().lower() for col in df.columns]
+    
+        # Dictionnaire de correspondance possible
+        mapping = {
+            'Station': ['station', 'tag', 'nom_station'],
+            'date': ['date', 'day', 'jour'],
+            'heure_locale': ['heure_locale', 'heure_local', 'hour', 'heure'],
+            'lat': ['lat', 'latitude'],
+            'lon': ['lon', 'long', 'longitude']
+        }
+            
+        # Détection automatique des bonnes colonnes
+        selected_cols = {}
+        for key, possibles in mapping.items():
+            for option in possibles:
+                if option in df.columns:
+                    selected_cols[key] = option
+                    break
+            else:
+                selected_cols[key] = None  # Colonne absente
+    
+        # Construction du DataFrame extrait
+        df_extrait = pd.DataFrame()
+        for key in mapping.keys():
+            col = selected_cols[key]
+            if col:
+                df_extrait[key] = df[col]
+            else:
+                df_extrait[key] = pd.NA
+    
+        # Correction du format de l'heure (ex : '9h45' -> '09:45')
+        def normalize_hour(val):
+            if pd.isna(val):
+                return val
+            val = str(val)
+            match = re.match(r'^(\d{1,2})h(\d{2})$', val)
+            if match:
+                h, m = match.groups()
+                return f"{int(h):02d}:{m}"
+            return val
+    
+        df_extrait['heure_locale'] = df_extrait['heure_locale'].apply(normalize_hour)
+        df_extrait = df_extrait.dropna(subset=['Station', 'date', 'heure_locale'])
+        print(df_extrait.to_string())
+        return df_extrait
+
+
+
+    
+    @staticmethod
+    def write_bilan_radeau_tagged(df: pd.DataFrame, path: str) -> None:
+        """
+        Écrit le DataFrame fourni (df) dans un fichier Excel à l'emplacement `path`,
+        en ajustant automatiquement la largeur des colonnes pour la lisibilité.
+        """
+        # Écriture initiale du fichier Excel
+        df.to_excel(path, index=False)
+        
+        # Ajustement automatique des largeurs de colonnes
+        wb = load_workbook(path)
+        ws = wb.active
+        for col in ws.columns:
+            max_length = 0
+            column = col[0].column_letter  # Get the column name
+            for cell in col:
+                try:
+                    if cell.value:
+                        length = len(str(cell.value))
+                        if length > max_length:
+                            max_length = length
+                except:
+                    pass
+            adjusted_width = max_length + 2
+            ws.column_dimensions[column].width = adjusted_width
+        wb.save(path)
+
+
+    # methode pour l'absorption 
+    @staticmethod
+    def read_calibrated_header(path: str) -> dict:
+        """
+        Lit l'entête d'un fichier calibré (.txt) et retourne un dictionnaire avec :
+        - 'InclX'
+        - 'InclY'
+        Si le champ n'existe pas dans l'entête, sa valeur sera -999.
+        """
+        header = {
+            'InclX': -999,
+            'InclY': -999,
+        }
+    
+        with open(path, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith("l_onde"):
+                    break  # Arrêt dès qu'on atteint la table de données
+                if line.startswith("InclX"):
+                    try:
+                        header['InclX'] = float(line.split(':')[1].strip())
+                    except Exception:
+                        pass
+                elif line.startswith("InclY"):
+                    try:
+                        header['InclY'] = float(line.split(':')[1].strip())
+                    except Exception:
+                        pass
+        return header
 
 
