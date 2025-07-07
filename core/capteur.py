@@ -32,9 +32,9 @@ class CapteurTRIOS:
         self.cal_data = None       # Données calibrées (après calcul/interpolation)
 
     def load_calibration_files(self):
-        path_ini = os.path.join(self.path_calib_dir, f"{self.nom_capteur}.ini")
-        path_back = os.path.join(self.path_calib_dir, f"Back_{self.nom_capteur}.dat")
-        path_cal = os.path.join(self.path_calib_dir, f"Cal_{self.nom_capteur}.dat")
+        path_ini = os.path.join(self.path_calib_dir, f"{self.nom_capteur.upper()}.ini")
+        path_back = os.path.join(self.path_calib_dir, f"Back_{self.nom_capteur.upper()}.dat")
+        path_cal = os.path.join(self.path_calib_dir, f"Cal_{self.nom_capteur.upper()}.dat")
 
         # Utilisation des méthodes statiques de DataManager
         self.coeff_c = DataManager.read_ini_file(path_ini)
